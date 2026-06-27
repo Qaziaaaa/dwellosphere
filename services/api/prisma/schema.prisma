@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  avatar       String?
+  role         String   @default("tenant")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  properties Property[]
+  bookings   Booking[]
+}
+
+model Property {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  price       Int
+  listingType String
+  beds        Int
+  baths       Int
+  sqft        Int
+  yearBuilt   Int
+  address     String
+  city        String
+  state       String
+  zip         String
+  lat         Float?
+  lng         Float?
+  images      String   @default("[]")
+  features    String   @default("[]")
+  amenities   String   @default("[]")
+  agentId     String
+  agent       User     @relation(fields: [agentId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  bookings Booking[]
+}
+
+model Booking {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  tenantId   String
+  tenant     User     @relation(fields: [tenantId], references: [id])
+  date       DateTime
+  timeSlot   String
+  status     String   @default("pending")
+  message    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([propertyId])
+  @@index([tenantId])
+}
