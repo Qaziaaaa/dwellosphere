@@ -1,30 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import PropertyDetailSection from '@/sections/properties/PropertyDetailSection';
-import PropertyCard from '@/components/PropertyCard';
-import { getPropertyById, getRelatedProperties } from '@/services/property.service';
+import { getPropertyById } from '@/services/property.service';
 import { useFavorites } from '@/hooks/useFavorites';
+import SimilarProperties from '@/components/SimilarProperties';
+import PricingAdvisor from '@/components/PricingAdvisor';
+import { trackInteraction } from '@/services/ai.service';
 import type { Property } from '@/types/property.types';
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [property, setProperty] = useState<Property | undefined>();
-  const [related, setRelated] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    Promise.all([
-      getPropertyById(id),
-      getRelatedProperties(id),
-    ]).then(([prop, rel]) => {
+    getPropertyById(id).then((prop) => {
       if (cancelled) return;
       setProperty(prop);
-      setRelated(rel);
       setLoading(false);
+      if (prop) trackInteraction(id, 'view');
     });
     return () => { cancelled = true; };
   }, [id]);
@@ -43,11 +40,7 @@ export default function PropertyDetail() {
     return (
       <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <div>
             <h1 className="text-4xl font-semibold text-text-primary mb-4">Property not found</h1>
             <p className="text-text-secondary mb-8">The property you're looking for doesn't exist or has been removed.</p>
             <Link
@@ -56,7 +49,7 @@ export default function PropertyDetail() {
             >
               Browse all properties
             </Link>
-          </motion.div>
+          </div>
         </div>
       </section>
     );
@@ -70,34 +63,25 @@ export default function PropertyDetail() {
         onToggleFavorite={toggleFavorite}
       />
 
-      {related.length > 0 && (
-        <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 bg-white">
+      {property && (
+        <section className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
           <div className="max-w-7xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="mb-10"
-            >
-              <h2 className="text-2xl md:text-3xl font-semibold text-text-primary">
-                Similar properties
-              </h2>
-            </motion.div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {related.map((p, i) => (
-                <PropertyCard
-                  key={p.id}
-                  property={p}
-                  isFavorite={isFavorite(p.id)}
-                  onToggleFavorite={toggleFavorite}
-                  index={i}
-                />
-              ))}
+            <div className="mb-12">
+              <PricingAdvisor
+                price={property.price}
+                listingType={property.listingType}
+                beds={property.beds}
+                baths={property.baths}
+                sqft={property.sqft}
+                city={property.location.city}
+                state={property.location.state}
+              />
             </div>
           </div>
         </section>
       )}
+
+      {id && <SimilarProperties propertyId={id} limit={3} />}
     </main>
   );
 }

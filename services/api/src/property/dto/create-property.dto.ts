@@ -1,4 +1,11 @@
-import { IsString, IsInt, IsIn, IsOptional, IsArray, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsIn,
+  IsOptional,
+  IsArray,
+  IsNumber,
+} from 'class-validator';
 
 export class CreatePropertyDto {
   @IsString()

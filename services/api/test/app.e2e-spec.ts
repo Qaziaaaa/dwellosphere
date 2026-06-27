@@ -12,7 +12,13 @@ describe('DwelloSphere API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
   });
 
@@ -111,9 +117,7 @@ describe('DwelloSphere API (e2e)', () => {
   // ─── Bookings ───────────────────────────────────────────
   describe('Bookings', () => {
     it('GET /api/v1/bookings/my - should reject without auth', async () => {
-      await request(app.getHttpServer())
-        .get('/api/v1/bookings/my')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/v1/bookings/my').expect(401);
     });
 
     it('GET /api/v1/bookings/agent - should reject without auth', async () => {

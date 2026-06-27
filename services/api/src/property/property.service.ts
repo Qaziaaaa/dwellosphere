@@ -16,12 +16,34 @@ export class PropertyService {
         amenities: JSON.stringify(dto.amenities || []),
         agentId,
       },
-      include: { agent: { select: { id: true, firstName: true, lastName: true, email: true, role: true, avatar: true } } },
+      include: {
+        agent: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+            avatar: true,
+          },
+        },
+      },
     });
   }
 
   async findAll(query: QueryPropertyDto) {
-    const { search, listingType, minPrice, maxPrice, minBeds, city, state, sort, page = 1, limit = 12 } = query;
+    const {
+      search,
+      listingType,
+      minPrice,
+      maxPrice,
+      minBeds,
+      city,
+      state,
+      sort,
+      page = 1,
+      limit = 12,
+    } = query;
     const where: any = { deletedAt: null };
 
     if (search) where.title = { contains: search };
@@ -43,7 +65,18 @@ export class PropertyService {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-        include: { agent: { select: { id: true, firstName: true, lastName: true, email: true, role: true, avatar: true } } },
+        include: {
+          agent: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+              avatar: true,
+            },
+          },
+        },
       }),
       this.prisma.property.count({ where }),
     ]);
@@ -65,7 +98,19 @@ export class PropertyService {
   async findOne(id: string) {
     const property = await this.prisma.property.findFirst({
       where: { id, deletedAt: null },
-      include: { agent: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, role: true, avatar: true } } },
+      include: {
+        agent: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            role: true,
+            avatar: true,
+          },
+        },
+      },
     });
     if (!property) throw new NotFoundException('Property not found');
     return {
@@ -77,8 +122,11 @@ export class PropertyService {
   }
 
   async update(id: string, dto: Partial<CreatePropertyDto>, userId: string) {
-    const property = await this.prisma.property.findFirst({ where: { id, agentId: userId, deletedAt: null } });
-    if (!property) throw new NotFoundException('Property not found or unauthorized');
+    const property = await this.prisma.property.findFirst({
+      where: { id, agentId: userId, deletedAt: null },
+    });
+    if (!property)
+      throw new NotFoundException('Property not found or unauthorized');
 
     const data: any = { ...dto };
     if (dto.images) data.images = JSON.stringify(dto.images);
@@ -89,8 +137,14 @@ export class PropertyService {
   }
 
   async remove(id: string, userId: string) {
-    const property = await this.prisma.property.findFirst({ where: { id, agentId: userId, deletedAt: null } });
-    if (!property) throw new NotFoundException('Property not found or unauthorized');
-    return this.prisma.property.update({ where: { id }, data: { deletedAt: new Date() } });
+    const property = await this.prisma.property.findFirst({
+      where: { id, agentId: userId, deletedAt: null },
+    });
+    if (!property)
+      throw new NotFoundException('Property not found or unauthorized');
+    return this.prisma.property.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
   }
 }

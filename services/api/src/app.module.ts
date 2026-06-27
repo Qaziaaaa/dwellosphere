@@ -4,13 +4,19 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { PropertyModule } from './property/property.module';
 import { BookingModule } from './booking/booking.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, PropertyModule, BookingModule],
+  imports: [PrismaModule, AuthModule, PropertyModule, BookingModule, AiModule],
   providers: [
     {
       provide: APP_PIPE,
-      useFactory: () => new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      useFactory: () =>
+        new ValidationPipe({
+          whitelist: true,
+          forbidNonWhitelisted: true,
+          transform: true,
+        }),
     },
   ],
 })

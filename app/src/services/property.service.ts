@@ -1,7 +1,7 @@
 import type { Property, PropertyFilters } from '@/types/property.types';
 import * as api from '@/lib/api';
 
-interface BackendProperty {
+export interface BackendProperty {
   id: string;
   title: string;
   description: string;
@@ -31,7 +31,7 @@ interface BackendProperty {
   };
 }
 
-function mapBackendProperty(p: BackendProperty): Property {
+export function mapBackendProperty(p: BackendProperty): Property {
   const images: { url: string; alt: string }[] = JSON.parse(p.images || '[]');
   const features: { name: string; value: string }[] = JSON.parse(p.features || '[]');
   const amenities: string[] = JSON.parse(p.amenities || '[]');

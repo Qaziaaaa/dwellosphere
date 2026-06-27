@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -28,7 +32,9 @@ export class BookingService {
   async findByTenant(tenantId: string) {
     return this.prisma.booking.findMany({
       where: { tenantId },
-      include: { property: { select: { id: true, title: true, images: true } } },
+      include: {
+        property: { select: { id: true, title: true, images: true } },
+      },
       orderBy: { date: 'desc' },
     });
   }
@@ -36,12 +42,28 @@ export class BookingService {
   async findByAgent(agentId: string) {
     return this.prisma.booking.findMany({
       where: { property: { agentId } },
-      include: { property: { select: { id: true, title: true, images: true } }, tenant: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } },
+      include: {
+        property: { select: { id: true, title: true, images: true } },
+        tenant: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
       orderBy: { date: 'desc' },
     });
   }
 
-  async updateStatus(id: string, dto: UpdateBookingDto, userId: string, userRole: string) {
+  async updateStatus(
+    id: string,
+    dto: UpdateBookingDto,
+    userId: string,
+    userRole: string,
+  ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: { property: true },

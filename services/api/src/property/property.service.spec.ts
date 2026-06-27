@@ -55,7 +55,10 @@ describe('PropertyService', () => {
       expect(result.id).toBe('p1');
       expect(mockPrisma.property.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ title: 'Test Property', agentId: 'agent1' }),
+          data: expect.objectContaining({
+            title: 'Test Property',
+            agentId: 'agent1',
+          }),
         }),
       );
     });
@@ -70,7 +73,14 @@ describe('PropertyService', () => {
           images: '[]',
           features: '[]',
           amenities: '[]',
-          agent: { id: 'a1', firstName: 'Agent', lastName: 'One', email: '', role: 'agent', avatar: null },
+          agent: {
+            id: 'a1',
+            firstName: 'Agent',
+            lastName: 'One',
+            email: '',
+            role: 'agent',
+            avatar: null,
+          },
         },
       ]);
       mockPrisma.property.count.mockResolvedValue(1);
@@ -104,7 +114,15 @@ describe('PropertyService', () => {
         images: '[]',
         features: '[]',
         amenities: '[]',
-        agent: { id: 'a1', firstName: 'A', lastName: 'B', email: '', phone: '', role: 'agent', avatar: null },
+        agent: {
+          id: 'a1',
+          firstName: 'A',
+          lastName: 'B',
+          email: '',
+          phone: '',
+          role: 'agent',
+          avatar: null,
+        },
       });
 
       const result = await service.findOne('p1');
@@ -113,14 +131,23 @@ describe('PropertyService', () => {
 
     it('should throw NotFoundException', async () => {
       mockPrisma.property.findFirst.mockResolvedValue(null);
-      await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('should update a property', async () => {
-      mockPrisma.property.findFirst.mockResolvedValue({ id: 'p1', agentId: 'agent1', deletedAt: null });
-      mockPrisma.property.update.mockResolvedValue({ id: 'p1', title: 'Updated' });
+      mockPrisma.property.findFirst.mockResolvedValue({
+        id: 'p1',
+        agentId: 'agent1',
+        deletedAt: null,
+      });
+      mockPrisma.property.update.mockResolvedValue({
+        id: 'p1',
+        title: 'Updated',
+      });
 
       const result = await service.update('p1', { title: 'Updated' }, 'agent1');
       expect(result.title).toBe('Updated');
@@ -128,14 +155,23 @@ describe('PropertyService', () => {
 
     it('should throw NotFoundException if not owner', async () => {
       mockPrisma.property.findFirst.mockResolvedValue(null);
-      await expect(service.update('p1', { title: 'X' }, 'other')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('p1', { title: 'X' }, 'other'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('remove', () => {
     it('should soft-delete a property', async () => {
-      mockPrisma.property.findFirst.mockResolvedValue({ id: 'p1', agentId: 'agent1', deletedAt: null });
-      mockPrisma.property.update.mockResolvedValue({ id: 'p1', deletedAt: new Date() });
+      mockPrisma.property.findFirst.mockResolvedValue({
+        id: 'p1',
+        agentId: 'agent1',
+        deletedAt: null,
+      });
+      mockPrisma.property.update.mockResolvedValue({
+        id: 'p1',
+        deletedAt: new Date(),
+      });
 
       const result = await service.remove('p1', 'agent1');
       expect(result.deletedAt).toBeDefined();
@@ -143,7 +179,9 @@ describe('PropertyService', () => {
 
     it('should throw NotFoundException if not owner', async () => {
       mockPrisma.property.findFirst.mockResolvedValue(null);
-      await expect(service.remove('p1', 'other')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('p1', 'other')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

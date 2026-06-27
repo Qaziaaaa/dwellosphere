@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PropertyService } from './property.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
@@ -30,7 +41,11 @@ export class PropertyController {
   @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('agent', 'admin')
-  update(@Param('id') id: string, @Body() dto: Partial<CreatePropertyDto>, @Req() req: any) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreatePropertyDto>,
+    @Req() req: any,
+  ) {
     return this.propertyService.update(id, dto, req.user.id);
   }
 

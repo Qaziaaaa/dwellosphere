@@ -60,13 +60,19 @@ describe('AuthService', () => {
       expect(result.token).toBe('mock-token');
       expect(mockPrisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ email: 'new@user.com', role: 'tenant' }),
+          data: expect.objectContaining({
+            email: 'new@user.com',
+            role: 'tenant',
+          }),
         }),
       );
     });
 
     it('should throw ConflictException for duplicate email', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing', email: dto.email });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'existing',
+        email: dto.email,
+      });
       await expect(service.register(dto)).rejects.toThrow(ConflictException);
     });
   });

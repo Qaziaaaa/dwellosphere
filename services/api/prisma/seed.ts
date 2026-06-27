@@ -3,6 +3,17 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+function generateEmbedding(text: string): number[] {
+  const words = text.toLowerCase().split(/\s+/);
+  const vec = new Array(384).fill(0);
+  for (const w of words) {
+    let hash = 0;
+    for (let i = 0; i < w.length; i++) { const char = w.charCodeAt(i); hash = ((hash << 5) - hash) + char; hash |= 0; }
+    vec[Math.abs(hash) % 384] += 1.0 / words.length;
+  }
+  return vec;
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash('password123', 10);
 
@@ -70,6 +81,11 @@ async function main() {
     },
   });
 
+  if (prop1 && !prop1.embedding) {
+    const emb1 = generateEmbedding(`${prop1.title} ${prop1.description} Pool Ocean View Smart Home Malibu CA modern villa luxury`);
+    await prisma.property.update({ where: { id: prop1.id }, data: { embedding: JSON.stringify(emb1) } });
+  }
+
   const prop2 = await prisma.property.upsert({
     where: { id: 'seed-prop-2' },
     update: {},
@@ -96,6 +112,11 @@ async function main() {
     },
   });
 
+  if (prop2 && !prop2.embedding) {
+    const emb2 = generateEmbedding(`${prop2.title} ${prop2.description} Doorman Gym Rooftop Brooklyn NY luxury apartment`);
+    await prisma.property.update({ where: { id: prop2.id }, data: { embedding: JSON.stringify(emb2) } });
+  }
+
   await prisma.booking.upsert({
     where: { id: 'seed-book-1' },
     update: {},
@@ -109,6 +130,19 @@ async function main() {
       message: 'Looking forward to seeing this property!',
     },
   });
+
+  const existingInteractions = await prisma.userInteraction.count();
+  if (existingInteractions === 0) {
+    await prisma.userInteraction.createMany({
+      data: [
+        { userId: tenant.id, propertyId: prop1.id, type: 'view' },
+        { userId: tenant.id, propertyId: prop1.id, type: 'save' },
+        { userId: tenant.id, propertyId: prop2.id, type: 'view' },
+        { userId: agent.id, propertyId: prop1.id, type: 'view' },
+        { userId: agent.id, propertyId: prop2.id, type: 'save' },
+      ],
+    });
+  }
 
   console.log('Seed data created successfully');
 }
