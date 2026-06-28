@@ -1,52 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmbeddingService } from './embedding.service';
-import { HuggingFaceService } from './huggingface.service';
+import { EmbeddingsProvider } from './providers/embeddings.provider';
+import { LLMProvider } from './providers/llm.provider';
+import { createRecommendationGraph } from './agents/recommendation.agent';
+import { createSearchGraph } from './agents/search.agent';
+import { createPricingGraph } from './agents/pricing.agent';
+import { createListingGraph } from './agents/listing.agent';
 
 @Injectable()
 export class RecommendationService {
+  private recGraph: ReturnType<typeof createRecommendationGraph>;
+  private searchGraph: ReturnType<typeof createSearchGraph>;
+  private pricingGraph: ReturnType<typeof createPricingGraph>;
+  private listingGraph: ReturnType<typeof createListingGraph>;
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly embedding: EmbeddingService,
-    private readonly hf: HuggingFaceService,
-  ) {}
+    private readonly embeddings: EmbeddingsProvider,
+    private readonly llm: LLMProvider,
+  ) {
+    this.recGraph = createRecommendationGraph(this.prisma);
+    this.searchGraph = createSearchGraph(this.prisma, this.embeddings);
+    this.pricingGraph = createPricingGraph(this.prisma);
+    this.listingGraph = createListingGraph(this.llm);
+  }
 
   async getRecommendationsForUser(userId: string, limit = 6) {
-    const recentInteractions = await this.prisma.userInteraction.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      include: { property: true },
+    const final = await this.recGraph.invoke({
+      userId,
+      limit,
+      likedIds: [],
+      scoredIds: [],
+      done: false,
     });
-
-    const likedPropertyIds = new Set(
-      recentInteractions.map((i) => i.propertyId),
-    );
-    const likedFeatures = this.extractFeatures(
-      recentInteractions.map((i) => i.property),
-    );
-
-    const allProperties = await this.prisma.property.findMany({
-      where: { deletedAt: null, id: { notIn: Array.from(likedPropertyIds) } },
-    });
-
-    const scored = allProperties.map((p) => {
-      const pFeatures = this.extractFeatureSet(p);
-      let score = 0;
-      for (const liked of likedFeatures) {
-        score += this.jaccardSimilarity(liked, pFeatures);
-      }
-      return {
-        id: p.id,
-        score: likedFeatures.length > 0 ? score / likedFeatures.length : 0,
-      };
-    });
-
-    scored.sort((a, b) => b.score - a.score);
-    const topIds = scored.slice(0, limit).map((s) => s.id);
+    const ids = final.scoredIds;
+    if (ids.length === 0) return [];
 
     const data = await this.prisma.property.findMany({
-      where: { id: { in: topIds } },
+      where: { id: { in: ids } },
       include: {
         agent: {
           select: {
@@ -61,7 +52,7 @@ export class RecommendationService {
       },
     });
 
-    const idOrder = new Map(topIds.map((id, i) => [id, i]));
+    const idOrder = new Map(ids.map((id, i) => [id, i]));
     data.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
 
     return data.map((p) => ({
@@ -82,27 +73,24 @@ export class RecommendationService {
     });
     if (!target) return [];
 
-    const allProperties = await this.prisma.property.findMany({
+    const all = await this.prisma.property.findMany({
       where: { deletedAt: null, id: { not: propertyId } },
     });
+    const targetEmb = this.parseEmbedding(target.embedding);
 
-    const targetEmbedding = this.safeParseEmbedding(target.embedding);
     let similar: { id: string; score: number }[];
 
-    if (targetEmbedding.length > 0) {
-      const candidates = allProperties.map((p) => ({
+    if (targetEmb.length > 0) {
+      const candidates = all.map((p) => ({
         id: p.id,
-        embedding: this.safeParseEmbedding(p.embedding),
+        embedding: this.parseEmbedding(p.embedding),
       }));
-      similar = this.embedding.findSimilar(targetEmbedding, candidates, limit);
+      similar = this.embeddings.findSimilar(targetEmb, candidates, limit);
     } else {
       const targetFeatures = this.extractFeatureSet(target);
-      const scored = allProperties.map((p) => ({
+      const scored = all.map((p) => ({
         id: p.id,
-        score: this.jaccardSimilarity(
-          targetFeatures,
-          this.extractFeatureSet(p),
-        ),
+        score: this.jaccard(targetFeatures, this.extractFeatureSet(p)),
       }));
       scored.sort((a, b) => b.score - a.score);
       similar = scored.slice(0, limit);
@@ -145,26 +133,18 @@ export class RecommendationService {
     filters?: { listingType?: string },
     limit = 12,
   ) {
-    const queryEmbedding = await this.hf.generateEmbedding(query);
-
-    const where: any = { deletedAt: null };
-    if (filters?.listingType) where.listingType = filters.listingType;
-
-    const allProperties = await this.prisma.property.findMany({ where });
-    const candidates = allProperties.map((p) => ({
-      id: p.id,
-      embedding: this.safeParseEmbedding(p.embedding),
-    }));
-
-    const similar = this.embedding.findSimilar(
-      queryEmbedding,
-      candidates,
+    const final = await this.searchGraph.invoke({
+      query,
+      listingType: filters?.listingType,
       limit,
-    );
-    const topIds = similar.map((s) => s.id);
+      scoredIds: [],
+      done: false,
+    });
+    const ids = final.scoredIds;
+    if (ids.length === 0) return [];
 
     const data = await this.prisma.property.findMany({
-      where: { id: { in: topIds } },
+      where: { id: { in: ids } },
       include: {
         agent: {
           select: {
@@ -179,7 +159,7 @@ export class RecommendationService {
       },
     });
 
-    const idOrder = new Map(topIds.map((id, i) => [id, i]));
+    const idOrder = new Map(ids.map((id, i) => [id, i]));
     data.sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
 
     return data.map((p) => ({
@@ -203,61 +183,12 @@ export class RecommendationService {
     city?: string;
     state?: string;
   }) {
-    const where: any = { deletedAt: null };
-    if (params.listingType) where.listingType = params.listingType;
-    if (params.city) where.city = { contains: params.city };
-    if (params.state) where.state = { contains: params.state };
-    if (params.beds) where.beds = params.beds;
-    if (params.baths) where.baths = params.baths;
-
-    const comparable = await this.prisma.property.findMany({
-      where,
-      orderBy: { price: 'asc' },
+    const final = await this.pricingGraph.invoke({
+      ...params,
+      result: null,
+      done: false,
     });
-
-    if (comparable.length === 0) {
-      return {
-        advice: 'Not enough comparable properties in this area.',
-        comparableCount: 0,
-      };
-    }
-
-    const prices = comparable.map((p) => p.price);
-    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const pricePerSqft = comparable
-      .filter((p) => p.sqft > 0)
-      .map((p) => p.price / p.sqft);
-    const avgPricePerSqft =
-      pricePerSqft.length > 0
-        ? pricePerSqft.reduce((a, b) => a + b, 0) / pricePerSqft.length
-        : 0;
-
-    let advice = '';
-    if (params.price) {
-      const ratio = params.price / avgPrice;
-      if (ratio < 0.8)
-        advice = 'This property is priced below the market average.';
-      else if (ratio > 1.2)
-        advice = 'This property is priced above the market average.';
-      else
-        advice =
-          'This property is priced competitively within the market range.';
-    } else {
-      const estimatedPrice = avgPrice;
-      advice = `Based on ${comparable.length} comparable properties, the estimated market price is $${estimatedPrice.toLocaleString()}.`;
-    }
-
-    return {
-      advice,
-      comparableCount: comparable.length,
-      avgPrice,
-      minPrice,
-      maxPrice,
-      avgPricePerSqft: Math.round(avgPricePerSqft),
-      estimatedPrice: params.price ? undefined : Math.round(avgPrice),
-    };
+    return final.result;
   }
 
   async generateListingDescription(dto: {
@@ -271,15 +202,13 @@ export class RecommendationService {
     state: string;
     amenities?: string[];
   }) {
-    const amenitiesList =
-      (dto.amenities || []).join(', ') || 'various modern features';
-    const prompt = `Write a compelling real estate listing description for a ${dto.propertyType} in ${dto.city}, ${dto.state}. Title: "${dto.title}". Features: ${dto.beds} bed, ${dto.baths} bath, ${dto.sqft} sqft, built in ${dto.yearBuilt}. Amenities: ${amenitiesList}. Write a professional, engaging description (max 3 sentences):`;
-
-    let description = await this.hf.generateText(prompt, 200);
-    if (!description) {
-      description = `Welcome to ${dto.title}, a stunning ${dto.propertyType} in the heart of ${dto.city}, ${dto.state}. This ${dto.beds}-bedroom, ${dto.baths}-bathroom home offers ${dto.sqft} sqft of thoughtfully designed living space, built in ${dto.yearBuilt} with premium finishes throughout.`;
-    }
-    return { description };
+    const final = await this.listingGraph.invoke({
+      ...dto,
+      amenities: dto.amenities || [],
+      description: '',
+      done: false,
+    });
+    return { description: final.description };
   }
 
   async trackInteraction(
@@ -293,46 +222,41 @@ export class RecommendationService {
     });
   }
 
-  private extractFeatures(properties: any[]): Set<string>[] {
-    return properties.map((p) => this.extractFeatureSet(p));
+  private parseEmbedding(embedding: string | null): number[] {
+    if (!embedding) return [];
+    try {
+      const p = JSON.parse(embedding);
+      return Array.isArray(p) ? p : [];
+    } catch {
+      return [];
+    }
   }
 
   private extractFeatureSet(property: any): Set<string> {
-    const features = new Set<string>();
-    features.add(property.listingType);
-    features.add(property.city);
-    features.add(property.state);
-    features.add(`beds:${property.beds}`);
-    features.add(`baths:${property.baths}`);
-    const sizeBucket =
+    const f = new Set<string>();
+    f.add(property.listingType);
+    f.add(property.city);
+    f.add(property.state);
+    f.add(`beds:${property.beds}`);
+    f.add(`baths:${property.baths}`);
+    f.add(
       property.sqft < 1000
         ? 'small'
         : property.sqft < 2000
           ? 'medium'
           : property.sqft < 3000
             ? 'large'
-            : 'estate';
-    features.add(`size:${sizeBucket}`);
+            : 'estate',
+    );
     const amenities: string[] = JSON.parse(property.amenities || '[]');
-    for (const a of amenities) features.add(`amenity:${a}`);
-    return features;
+    for (const a of amenities) f.add(`amenity:${a}`);
+    return f;
   }
 
-  private jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  private jaccard(a: Set<string>, b: Set<string>): number {
     let intersection = 0;
     for (const item of a) if (b.has(item)) intersection++;
     const union = new Set([...a, ...b]).size;
     return union === 0 ? 0 : intersection / union;
-  }
-
-  private safeParseEmbedding(embedding: string | null): number[] {
-    if (!embedding) return [];
-    try {
-      const parsed = JSON.parse(embedding);
-      if (Array.isArray(parsed)) return parsed;
-      return [];
-    } catch {
-      return [];
-    }
   }
 }

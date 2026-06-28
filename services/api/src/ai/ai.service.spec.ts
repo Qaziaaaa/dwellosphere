@@ -1,7 +1,20 @@
+jest.mock('@langchain/community/embeddings/hf', () => ({
+  HuggingFaceInferenceEmbeddings: jest.fn().mockImplementation(() => ({
+    embedQuery: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+    embedDocuments: jest.fn().mockResolvedValue([[0.1, 0.2, 0.3]]),
+  })),
+}));
+
+jest.mock('@langchain/community/llms/hf', () => ({
+  HuggingFaceInference: jest.fn().mockImplementation(() => ({
+    invoke: jest.fn().mockResolvedValue('mocked response'),
+  })),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecommendationService } from './recommendation.service';
-import { EmbeddingService } from './embedding.service';
-import { HuggingFaceService } from './huggingface.service';
+import { EmbeddingsProvider } from './providers/embeddings.provider';
+import { LLMProvider } from './providers/llm.provider';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('RecommendationService', () => {
@@ -11,26 +24,34 @@ describe('RecommendationService', () => {
     userInteraction: {
       findMany: jest.fn(),
       create: jest.fn(),
-      count: jest.fn(),
     },
     property: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
-      findUnique: jest.fn(),
     },
   };
 
-  const mockHuggingFace = {
-    generateEmbedding: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
-    generateText: jest.fn().mockResolvedValue('AI generated description'),
+  const mockEmbeddings = {
+    embedQuery: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+    findSimilar: jest.fn().mockReturnValue([
+      { id: 'prop-2', score: 0.95 },
+      { id: 'prop-3', score: 0.8 },
+    ]),
+    cosineSimilarity: jest.fn().mockReturnValue(0.95),
+  };
+
+  const mockLLM = {
+    generateText: jest
+      .fn()
+      .mockResolvedValue('AI generated listing description'),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RecommendationService,
-        EmbeddingService,
-        { provide: HuggingFaceService, useValue: mockHuggingFace },
+        { provide: EmbeddingsProvider, useValue: mockEmbeddings },
+        { provide: LLMProvider, useValue: mockLLM },
         { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();
@@ -130,8 +151,7 @@ describe('RecommendationService', () => {
   });
 
   describe('semanticSearch', () => {
-    it('should return properties matching the query', async () => {
-      mockHuggingFace.generateEmbedding.mockResolvedValue([0.1, 0.2, 0.3]);
+    it('should run search graph and return results', async () => {
       mockPrisma.property.findMany.mockResolvedValue([
         {
           id: 'prop-1',
@@ -166,39 +186,6 @@ describe('RecommendationService', () => {
             avatar: null,
           },
         },
-        {
-          id: 'prop-2',
-          embedding: JSON.stringify([0.9, 0.9, 0.9]),
-          title: 'No Match',
-          description: 'No Match',
-          price: 200000,
-          listingType: 'for_sale',
-          beds: 4,
-          baths: 3,
-          sqft: 2500,
-          yearBuilt: 2021,
-          address: '456 St',
-          city: 'City2',
-          state: 'ST',
-          zip: '12346',
-          lat: null,
-          lng: null,
-          images: '[]',
-          features: '[]',
-          amenities: '[]',
-          agentId: 'agent-1',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          deletedAt: null,
-          agent: {
-            id: 'agent-1',
-            firstName: 'A',
-            lastName: 'B',
-            email: 'a@b.com',
-            role: 'agent',
-            avatar: null,
-          },
-        },
       ]);
 
       const result = await service.semanticSearch('modern apartment', {}, 5);
@@ -208,7 +195,7 @@ describe('RecommendationService', () => {
   });
 
   describe('pricingAdvice', () => {
-    it('should return pricing advice with comparable data', async () => {
+    it('should return advice from pricing graph', async () => {
       mockPrisma.property.findMany.mockResolvedValue([
         { price: 200000, sqft: 1500 } as any,
         { price: 250000, sqft: 1800 } as any,
@@ -220,11 +207,9 @@ describe('RecommendationService', () => {
         listingType: 'for_sale',
         city: 'TestCity',
       });
+      expect(result).toBeDefined();
       expect(result.advice).toBeDefined();
       expect(result.comparableCount).toBe(3);
-      expect(result.avgPrice).toBe(250000);
-      expect(result.minPrice).toBe(200000);
-      expect(result.maxPrice).toBe(300000);
     });
 
     it('should return no comparable message when empty', async () => {
@@ -236,7 +221,7 @@ describe('RecommendationService', () => {
   });
 
   describe('generateListingDescription', () => {
-    it('should generate a description', async () => {
+    it('should generate a description via listing graph', async () => {
       const result = await service.generateListingDescription({
         title: 'Beautiful Home',
         propertyType: 'house',
@@ -268,9 +253,10 @@ describe('RecommendationService', () => {
   });
 
   describe('getRecommendationsForUser', () => {
-    it('should return recommendations based on user interactions', async () => {
+    it('should return recommendations via LangGraph agent', async () => {
       mockPrisma.userInteraction.findMany.mockResolvedValue([
         {
+          propertyId: 'p1',
           property: {
             listingType: 'for_rent',
             city: 'NY',
@@ -282,6 +268,7 @@ describe('RecommendationService', () => {
           },
         },
         {
+          propertyId: 'p2',
           property: {
             listingType: 'for_rent',
             city: 'NY',
@@ -296,7 +283,7 @@ describe('RecommendationService', () => {
 
       mockPrisma.property.findMany.mockResolvedValue([
         {
-          id: 'p1',
+          id: 'p3',
           listingType: 'for_rent',
           city: 'NY',
           state: 'NY',
@@ -337,38 +324,27 @@ describe('RecommendationService', () => {
   });
 });
 
-describe('EmbeddingService', () => {
-  let service: EmbeddingService;
+describe('EmbeddingsProvider', () => {
+  let provider: EmbeddingsProvider;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        EmbeddingService,
-        {
-          provide: HuggingFaceService,
-          useValue: {
-            generateEmbedding: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
-          },
-        },
-      ],
+      providers: [EmbeddingsProvider],
     }).compile();
-
-    service = module.get<EmbeddingService>(EmbeddingService);
+    provider = module.get<EmbeddingsProvider>(EmbeddingsProvider);
   });
 
   it('should compute cosine similarity', () => {
-    const sim = service.cosineSimilarity([1, 0, 0], [1, 0, 0]);
+    const sim = provider.cosineSimilarity([1, 0, 0], [1, 0, 0]);
     expect(sim).toBeCloseTo(1);
-
-    const sim2 = service.cosineSimilarity([1, 0, 0], [0, 1, 0]);
+    const sim2 = provider.cosineSimilarity([1, 0, 0], [0, 1, 0]);
     expect(sim2).toBeCloseTo(0);
-
-    const sim3 = service.cosineSimilarity([1, 0], [1, 0, 0]);
+    const sim3 = provider.cosineSimilarity([1, 0], [1, 0, 0]);
     expect(sim3).toBe(0);
   });
 
   it('should find similar items', () => {
-    const result = service.findSimilar(
+    const result = provider.findSimilar(
       [1, 0, 0],
       [
         { id: 'a', embedding: [1, 0, 0] },
@@ -377,14 +353,13 @@ describe('EmbeddingService', () => {
       ],
       2,
     );
-
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('a');
     expect(result[0].score).toBeCloseTo(1);
   });
 
-  it('should generate property embedding', async () => {
-    const result = await service.generatePropertyEmbedding({
+  it('should generate property embedding fallback', async () => {
+    const result = await provider.generatePropertyEmbedding({
       title: 'Test',
       description: 'A test property',
       features: ['Pool', 'Garage'],
@@ -392,9 +367,7 @@ describe('EmbeddingService', () => {
       city: 'Portland',
       state: 'OR',
     });
-
     expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
   });
 });

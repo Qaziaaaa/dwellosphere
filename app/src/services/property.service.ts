@@ -17,9 +17,9 @@ export interface BackendProperty {
   zip: string;
   lat: number | null;
   lng: number | null;
-  images: string;
-  features: string;
-  amenities: string;
+  images: string | { url: string; alt: string }[];
+  features: string | { name: string; value: string }[];
+  amenities: string | string[];
   agent: {
     id: string;
     firstName: string;
@@ -32,9 +32,15 @@ export interface BackendProperty {
 }
 
 export function mapBackendProperty(p: BackendProperty): Property {
-  const images: { url: string; alt: string }[] = JSON.parse(p.images || '[]');
-  const features: { name: string; value: string }[] = JSON.parse(p.features || '[]');
-  const amenities: string[] = JSON.parse(p.amenities || '[]');
+  function safeParse(val: unknown): unknown[] {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') try { return JSON.parse(val) } catch { return [] }
+    return [];
+  }
+
+  const images = safeParse(p.images) as { url: string; alt: string }[];
+  const features = safeParse(p.features) as { name: string; value: string }[];
+  const amenities = safeParse(p.amenities) as string[];
 
   return {
     id: p.id,

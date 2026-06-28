@@ -22,18 +22,18 @@ export default function PropertyGridSection({ aiQuery }: Props) {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (aiMode) {
-        const results = await semanticSearch(aiQuery!, {}, 50);
-        if (!cancelled) {
-          setProperties(results);
-          setLoading(false);
+      try {
+        if (aiMode) {
+          const results = await semanticSearch(aiQuery!, {}, 50);
+          if (!cancelled) setProperties(results);
+        } else {
+          const data = await getProperties(filters);
+          if (!cancelled) setProperties(data);
         }
-      } else {
-        const data = await getProperties(filters);
-        if (!cancelled) {
-          setProperties(data);
-          setLoading(false);
-        }
+      } catch {
+        if (!cancelled) setProperties([]);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
     load();

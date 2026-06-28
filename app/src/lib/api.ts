@@ -1,7 +1,16 @@
 const API_BASE = '/api/v1';
 
+const AUTH_KEY = 'dwellosphere_auth';
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const token = localStorage.getItem('dwellosphere_token');
+  let token: string | null = null;
+  try {
+    const stored = localStorage.getItem(AUTH_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      token = parsed.token || null;
+    }
+  } catch { /* ignore */ }
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;

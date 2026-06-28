@@ -69,12 +69,18 @@ export default function PropertyDetailSection({
           transition={{ duration: 0.6 }}
           className="relative overflow-hidden rounded-3xl mb-8 group"
         >
-          <div className="relative">
-            <img
-              src={property.images[currentImageIndex]?.url}
-              alt={property.images[currentImageIndex]?.alt || property.title}
-              className="w-full h-[400px] md:h-[500px] object-cover"
-            />
+          <div className="relative bg-gray-100">
+            {property.images[currentImageIndex]?.url ? (
+              <img
+                src={property.images[currentImageIndex].url}
+                alt={property.images[currentImageIndex]?.alt || property.title}
+                className="w-full h-[400px] md:h-[500px] object-cover"
+              />
+            ) : (
+              <div className="w-full h-[400px] md:h-[500px] flex items-center justify-center text-text-muted">
+                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           </div>
 
@@ -251,11 +257,18 @@ export default function PropertyDetailSection({
               className="bg-white rounded-2xl p-6 border border-border shadow-sm lg:sticky lg:top-28 z-10"
             >
               <div className="flex items-center gap-4 mb-4">
-                <img
-                  src={property.agent.image}
-                  alt={property.agent.name}
-                  className="w-14 h-14 rounded-xl object-cover"
-                />
+                {property.agent.image ? (
+                  <img
+                    src={property.agent.image}
+                    alt={property.agent.name}
+                    loading="lazy"
+                    className="w-14 h-14 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-text-muted text-lg font-medium">
+                    {property.agent.name?.charAt(0) || 'A'}
+                  </div>
+                )}
                 <div>
                   <p className="font-semibold text-text-primary">{property.agent.name}</p>
                   <p className="text-sm text-text-muted">{property.agent.role}</p>

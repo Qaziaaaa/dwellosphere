@@ -23,7 +23,10 @@ export default function AgentDashboardSection() {
     getBookingsByAgent(user.id).then((data) => {
       if (cancelled) return;
       setBookings(data);
-      setLoading(false);
+    }).catch(() => {
+      if (!cancelled) setBookings([]);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
   }, [user]);
