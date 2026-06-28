@@ -20,16 +20,24 @@ export default function ListingGenerator() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       const result = await generateListingDescription({
         ...form,
         amenities: form.amenities.split(',').map((s) => s.trim()).filter(Boolean),
       });
-      if (result) setDescription(result.description);
+      if (result?.description) {
+        setDescription(result.description);
+      } else {
+        setError('Failed to generate description. Please try again.');
+      }
+    } catch {
+      setError('Backend server unavailable. Make sure the API server is running.');
     } finally {
       setLoading(false);
     }
@@ -98,6 +106,9 @@ export default function ListingGenerator() {
           <Sparkles className="h-4 w-4" />
           {loading ? 'Generating...' : 'Generate Description'}
         </Button>
+        {error && (
+          <p className="text-sm text-red-500">{error}</p>
+        )}
       </form>
       {description && (
         <div className="mt-4">

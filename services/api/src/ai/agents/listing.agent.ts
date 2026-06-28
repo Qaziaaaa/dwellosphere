@@ -17,11 +17,15 @@ const ListingState = Annotation.Root({
 
 export function createListingGraph(llm: LLMProvider) {
   const generateWithAI = async (state: typeof ListingState.State) => {
-    const amenitiesList =
-      (state.amenities || []).join(', ') || 'various modern features';
-    const prompt = `Write a compelling real estate listing for a ${state.propertyType} in ${state.city}, ${state.state}. Title: "${state.title}". Features: ${state.beds} bed, ${state.baths} bath, ${state.sqft} sqft, built ${state.yearBuilt}. Amenities: ${amenitiesList}. Max 3 sentences:`;
-    const description = await llm.generateText(prompt);
-    return { description };
+    try {
+      const amenitiesList =
+        (state.amenities || []).join(', ') || 'various modern features';
+      const prompt = `Write a compelling real estate listing for a ${state.propertyType} in ${state.city}, ${state.state}. Title: "${state.title}". Features: ${state.beds} bed, ${state.baths} bath, ${state.sqft} sqft, built ${state.yearBuilt}. Amenities: ${amenitiesList}. Max 3 sentences:`;
+      const description = await llm.generateText(prompt);
+      return { description };
+    } catch {
+      return { description: '' };
+    }
   };
 
   const fallbackDescription = (state: typeof ListingState.State) => {

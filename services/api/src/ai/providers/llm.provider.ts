@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HuggingFaceInference } from '@langchain/community/llms/hf';
 
+const TIMEOUT_MS = 15_000;
+
 @Injectable()
 export class LLMProvider {
   private readonly logger = new Logger(LLMProvider.name);
@@ -21,7 +23,12 @@ export class LLMProvider {
   async generateText(prompt: string): Promise<string> {
     if (!this.client) return '';
     try {
-      const result = await this.client.invoke(prompt);
+      const result = await Promise.race([
+        this.client.invoke(prompt),
+        new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error('LLM timeout')), TIMEOUT_MS),
+        ),
+      ]);
       return result.replace(prompt, '').trim();
     } catch (err) {
       this.logger.warn(`LLM generation failed: ${err}`);
