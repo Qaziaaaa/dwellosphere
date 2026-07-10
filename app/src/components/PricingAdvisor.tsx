@@ -49,6 +49,8 @@ export default function PricingAdvisor({
           state,
         });
         if (!cancelled) setAdvice(data);
+      } catch {
+        if (!cancelled) setAdvice(null);
       } finally {
         if (!cancelled) setLoading(false);
       }

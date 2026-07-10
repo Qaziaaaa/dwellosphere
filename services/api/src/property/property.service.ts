@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { QueryPropertyDto } from './dto/query-property.dto';
+import { safeJsonParse } from '../common/utils';
 
 @Injectable()
 export class PropertyService {
@@ -84,9 +85,9 @@ export class PropertyService {
     return {
       data: data.map((p) => ({
         ...p,
-        images: JSON.parse(p.images),
-        features: JSON.parse(p.features),
-        amenities: JSON.parse(p.amenities),
+        images: safeJsonParse<string[]>(p.images, []),
+        features: safeJsonParse<string[]>(p.features, []),
+        amenities: safeJsonParse<string[]>(p.amenities, []),
       })),
       total,
       page,
@@ -115,9 +116,9 @@ export class PropertyService {
     if (!property) throw new NotFoundException('Property not found');
     return {
       ...property,
-      images: JSON.parse(property.images),
-      features: JSON.parse(property.features),
-      amenities: JSON.parse(property.amenities),
+      images: safeJsonParse<string[]>(property.images, []),
+      features: safeJsonParse<string[]>(property.features, []),
+      amenities: safeJsonParse<string[]>(property.amenities, []),
     };
   }
 

@@ -6,6 +6,7 @@ import { createRecommendationGraph } from './agents/recommendation.agent';
 import { createSearchGraph } from './agents/search.agent';
 import { createPricingGraph } from './agents/pricing.agent';
 import { createListingGraph } from './agents/listing.agent';
+import { safeJsonParse } from '../common/utils';
 
 @Injectable()
 export class RecommendationService {
@@ -57,9 +58,9 @@ export class RecommendationService {
 
     return data.map((p) => ({
       ...p,
-      images: JSON.parse(p.images),
-      features: JSON.parse(p.features),
-      amenities: JSON.parse(p.amenities),
+      images: safeJsonParse<string[]>(p.images, []),
+      features: safeJsonParse<string[]>(p.features, []),
+      amenities: safeJsonParse<string[]>(p.amenities, []),
       recommendationScore:
         idOrder.get(p.id) !== undefined
           ? 1 - (idOrder.get(p.id) ?? 0) / limit
@@ -118,9 +119,9 @@ export class RecommendationService {
 
     return data.map((p) => ({
       ...p,
-      images: JSON.parse(p.images),
-      features: JSON.parse(p.features),
-      amenities: JSON.parse(p.amenities),
+      images: safeJsonParse<string[]>(p.images, []),
+      features: safeJsonParse<string[]>(p.features, []),
+      amenities: safeJsonParse<string[]>(p.amenities, []),
       similarityScore:
         idOrder.get(p.id) !== undefined
           ? 1 - (idOrder.get(p.id) ?? 0) / limit
@@ -164,9 +165,9 @@ export class RecommendationService {
 
     return data.map((p) => ({
       ...p,
-      images: JSON.parse(p.images),
-      features: JSON.parse(p.features),
-      amenities: JSON.parse(p.amenities),
+      images: safeJsonParse<string[]>(p.images, []),
+      features: safeJsonParse<string[]>(p.features, []),
+      amenities: safeJsonParse<string[]>(p.amenities, []),
       relevanceScore:
         idOrder.get(p.id) !== undefined
           ? 1 - (idOrder.get(p.id) ?? 0) / limit
@@ -248,7 +249,7 @@ export class RecommendationService {
             ? 'large'
             : 'estate',
     );
-    const amenities: string[] = JSON.parse(property.amenities || '[]');
+    const amenities: string[] = safeJsonParse<string[]>(property.amenities, []);
     for (const a of amenities) f.add(`amenity:${a}`);
     return f;
   }

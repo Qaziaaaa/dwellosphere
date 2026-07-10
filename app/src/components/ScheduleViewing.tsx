@@ -25,6 +25,7 @@ export const ScheduleViewing: FC<ScheduleViewingProps> = ({
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = (): boolean => {
@@ -41,6 +42,7 @@ export const ScheduleViewing: FC<ScheduleViewingProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    setSubmitError('');
 
     try {
       await requestViewing({
@@ -52,15 +54,14 @@ export const ScheduleViewing: FC<ScheduleViewingProps> = ({
         phone: phone.trim() || undefined,
         message: message.trim() || undefined,
       });
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        onClose();
+      }, 2000);
     } catch {
-      // silently fail for now
+      setSubmitError('Failed to submit booking. Please check your connection and try again.');
     }
-
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      onClose();
-    }, 2000);
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -206,6 +207,9 @@ export const ScheduleViewing: FC<ScheduleViewingProps> = ({
                   >
                     Request Viewing
                   </button>
+                  {submitError && (
+                    <p className="text-sm text-red-500">{submitError}</p>
+                  )}
                 </form>
               </>
             )}

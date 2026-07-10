@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.login(input);
       setAuth({ user: response.user, token: response.token });
+    } catch (err) {
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -38,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.register(input);
       setAuth({ user: response.user, token: response.token });
+    } catch (err) {
+      throw err;
     } finally {
       setIsLoading(false);
     }

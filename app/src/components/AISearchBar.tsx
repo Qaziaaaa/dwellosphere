@@ -41,6 +41,8 @@ export default function AISearchBar({
           setSuggestions(results);
           setOpen(results.length > 0);
         }
+      } catch {
+        if (!cancelled) setSuggestions([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -21,6 +21,8 @@ export default function SimilarProperties({ propertyId, limit = 3 }: Props) {
       try {
         const data = await getSimilarProperties(propertyId, limit);
         if (!cancelled) setProperties(data);
+      } catch {
+        if (!cancelled) setProperties([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

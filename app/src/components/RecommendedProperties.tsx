@@ -21,6 +21,8 @@ export default function RecommendedProperties({ limit = 4 }: Props) {
       try {
         const data = await getRecommendations(limit);
         if (!cancelled) setProperties(data);
+      } catch {
+        if (!cancelled) setProperties([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -2,7 +2,13 @@ import { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { MapPin } from 'lucide-react';
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZHdlbGxvc3BoZXJlIiwiYSI6ImNsdmd4eHh4eDAiLCJfIjoiY2x2Z3h4eHh4MCJ9.placeholder';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 interface PropertyMapProps {
   lat: number;
@@ -17,6 +23,7 @@ export default function PropertyMap({ lat, lng, address, city, state }: Property
   const mapRef = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
+    if (!MAPBOX_TOKEN) return;
     if (!mapContainerRef.current) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -35,7 +42,7 @@ export default function PropertyMap({ lat, lng, address, city, state }: Property
       .setLngLat([lng, lat])
       .setPopup(
         new mapboxgl.Popup({ offset: 25 }).setHTML(
-          `<strong>${address}</strong><br/>${city}, ${state}`
+          `<strong>${escapeHtml(address)}</strong><br/>${escapeHtml(city)}, ${escapeHtml(state)}`
         )
       )
       .addTo(map);
@@ -47,6 +54,14 @@ export default function PropertyMap({ lat, lng, address, city, state }: Property
       mapRef.current = null;
     };
   }, [lat, lng, address, city, state]);
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="relative flex h-[250px] items-center justify-center rounded-2xl border border-border bg-slate-100 text-sm text-slate-500">
+        Map unavailable — set VITE_MAPBOX_TOKEN in .env
+      </div>
+    );
+  }
 
   return (
     <div className="relative bg-white rounded-2xl overflow-hidden border border-border shadow-sm">

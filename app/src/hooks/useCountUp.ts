@@ -4,6 +4,7 @@ export function useCountUp(end: number, duration: number = 2) {
   const [count, setCount] = useState(0);
   const [isInView, setIsInView] = useState(false);
   const hasAnimated = useRef(false);
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
     if (!isInView || hasAnimated.current) return;
@@ -15,10 +16,16 @@ export function useCountUp(end: number, duration: number = 2) {
       const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
       setCount(Math.floor(progress * end));
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafId.current = requestAnimationFrame(animate);
       }
     };
-    requestAnimationFrame(animate);
+    rafId.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+      }
+    };
   }, [isInView, end, duration]);
 
   return { count, setIsInView };

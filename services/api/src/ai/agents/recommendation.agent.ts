@@ -81,7 +81,12 @@ function extractSet(property: any): Set<string> {
           ? 'large'
           : 'estate',
   );
-  const amenities: string[] = JSON.parse(property.amenities || '[]');
+  let amenities: string[];
+  try {
+    amenities = JSON.parse(property.amenities || '[]');
+  } catch {
+    amenities = [];
+  }
   for (const a of amenities) f.add(a);
   return f;
 }

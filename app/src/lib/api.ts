@@ -1,6 +1,6 @@
 const API_BASE = '/api/v1';
-
 const AUTH_KEY = 'dwellosphere_auth';
+const REQUEST_TIMEOUT = 30_000;
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   let token: string | null = null;
@@ -16,6 +16,12 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+function withTimeout(ms: number): AbortController {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller;
+}
+
 async function handleResponse(res: Response) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: res.statusText }));
@@ -24,34 +30,40 @@ async function handleResponse(res: Response) {
   return res.json();
 }
 
-export async function get(path: string) {
+export async function get<T = any>(path: string, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}${path}`, { headers });
+  const timeout = withTimeout(REQUEST_TIMEOUT);
+  const res = await fetch(`${API_BASE}${path}`, { headers, signal: signal ?? timeout.signal });
   return handleResponse(res);
 }
 
-export async function post(path: string, body?: unknown) {
+export async function post<T = any>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
+  const timeout = withTimeout(REQUEST_TIMEOUT);
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    signal: signal ?? timeout.signal,
   });
   return handleResponse(res);
 }
 
-export async function put(path: string, body?: unknown) {
+export async function put<T = any>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
+  const timeout = withTimeout(REQUEST_TIMEOUT);
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'PUT',
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    signal: signal ?? timeout.signal,
   });
   return handleResponse(res);
 }
 
-export async function del(path: string) {
+export async function del<T = any>(path: string, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers });
+  const timeout = withTimeout(REQUEST_TIMEOUT);
+  const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers, signal: signal ?? timeout.signal });
   return handleResponse(res);
 }

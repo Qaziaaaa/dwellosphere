@@ -5,3 +5,6 @@ dist/
 *.db-journal
 .env
 coverage/
+*.log
+*.err
+.playwright-mcp/
