@@ -36,8 +36,15 @@ export default function ListingGenerator() {
       } else {
         setError('Failed to generate description. Please try again.');
       }
-    } catch {
-      setError('Backend server unavailable. Make sure the API server is running.');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('Unauthorized')) {
+        setError('Please log in as an agent to use the AI Listing Generator.');
+      } else if (msg.includes('timed out') || msg.includes('aborted')) {
+        setError('Request timed out. The AI service may be overloaded. Please try again.');
+      } else {
+        setError(`Backend server unavailable. Make sure the API server is running.`);
+      }
     } finally {
       setLoading(false);
     }

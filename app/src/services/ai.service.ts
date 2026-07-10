@@ -93,8 +93,8 @@ export async function generateListingDescription(params: {
 }): Promise<ListingDescription | null> {
   try {
     return await api.post('/ai/listing-generator', params);
-  } catch {
-    return null;
+  } catch (err) {
+    throw err;
   }
 }
 
