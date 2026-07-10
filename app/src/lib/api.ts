@@ -30,14 +30,14 @@ async function handleResponse(res: Response) {
   return res.json();
 }
 
-export async function get<T = any>(path: string, signal?: AbortSignal): Promise<T> {
+export async function get<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
   const timeout = withTimeout(REQUEST_TIMEOUT);
   const res = await fetch(`${API_BASE}${path}`, { headers, signal: signal ?? timeout.signal });
   return handleResponse(res);
 }
 
-export async function post<T = any>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+export async function post<T = unknown>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
   const timeout = withTimeout(REQUEST_TIMEOUT);
   const res = await fetch(`${API_BASE}${path}`, {
@@ -49,7 +49,7 @@ export async function post<T = any>(path: string, body?: unknown, signal?: Abort
   return handleResponse(res);
 }
 
-export async function put<T = any>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+export async function put<T = unknown>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
   const timeout = withTimeout(REQUEST_TIMEOUT);
   const res = await fetch(`${API_BASE}${path}`, {
@@ -61,7 +61,7 @@ export async function put<T = any>(path: string, body?: unknown, signal?: AbortS
   return handleResponse(res);
 }
 
-export async function del<T = any>(path: string, signal?: AbortSignal): Promise<T> {
+export async function del<T = unknown>(path: string, signal?: AbortSignal): Promise<T> {
   const headers = await getAuthHeaders();
   const timeout = withTimeout(REQUEST_TIMEOUT);
   const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers, signal: signal ?? timeout.signal });

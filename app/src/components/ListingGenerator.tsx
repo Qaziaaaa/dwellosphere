@@ -36,8 +36,8 @@ export default function ListingGenerator() {
       } else {
         setError('Failed to generate description. Please try again.');
       }
-    } catch (err: any) {
-      const msg = err?.message || '';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
       if (msg.includes('Unauthorized')) {
         setError('Please log in as an agent to use the AI Listing Generator.');
       } else if (msg.includes('timed out') || msg.includes('aborted')) {

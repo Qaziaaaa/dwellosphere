@@ -91,11 +91,7 @@ export async function generateListingDescription(params: {
   state: string;
   amenities?: string[];
 }): Promise<ListingDescription | null> {
-  try {
-    return await api.post('/ai/listing-generator', params);
-  } catch (err) {
-    throw err;
-  }
+  return await api.post('/ai/listing-generator', params);
 }
 
 export async function trackInteraction(
