@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HuggingFaceInferenceEmbeddings } from '@langchain/community/embeddings/hf';
 import { Document } from '@langchain/core/documents';
 
+const EMBED_TIMEOUT_MS = 10_000;
+
 @Injectable()
 export class EmbeddingsProvider {
   private readonly logger = new Logger(EmbeddingsProvider.name);
@@ -19,7 +21,12 @@ export class EmbeddingsProvider {
 
   async embedQuery(text: string): Promise<number[]> {
     try {
-      const result = await this.client.embedQuery(text);
+      const result = await Promise.race([
+        this.client.embedQuery(text),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Embedding timeout')), EMBED_TIMEOUT_MS),
+        ),
+      ]);
       if (result && result.length > 0) return result;
       return this.fallbackClient.embed(text);
     } catch (err) {
@@ -30,7 +37,14 @@ export class EmbeddingsProvider {
 
   async embedDocuments(texts: string[]): Promise<number[][]> {
     try {
-      return await this.client.embedDocuments(texts);
+      const result = await Promise.race([
+        this.client.embedDocuments(texts),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Embedding timeout')), EMBED_TIMEOUT_MS * texts.length),
+        ),
+      ]);
+      if (result) return result;
+      return texts.map((t) => this.fallbackClient.embed(t));
     } catch (err) {
       this.logger.warn(`LangChain HF batch embedding failed: ${err}`);
       return texts.map((t) => this.fallbackClient.embed(t));
